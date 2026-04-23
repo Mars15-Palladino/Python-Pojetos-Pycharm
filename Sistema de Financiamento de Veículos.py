@@ -5,6 +5,72 @@ from tabulate import tabulate  # Importa uma Vestimenta Bombada para as tabelas
 import sqlite3
 import os
 
+#Começando Orientação ao Objeto
+class Veiculo:
+    def __init__(self,marca, modelo, ano, placa, ID_DONO,ID = None):
+        self.ID = ID
+        self.marca = marca
+        self.modelo = modelo
+        self.ano = ano
+        self.placa = placa
+        self.ID_DONO = ID_DONO
+class VeiculosEstoque:
+    def __init__(self,conexao):
+        self.conn = conexao
+    def inserir(self, veiculo):
+        """Recebe um objeto Veiculo e traduz para SQL"""
+        try:
+            cursor = self.conn.cursor()
+            # Note como usamos os nomes das colunas do seu banco (MARCA, MODELO...)
+            sql = "INSERT INTO Veiculos(MARCA,MODELO,ANO,PLACA,ID_DONO) VALUES(?,?,?,?,?)"
+            # Pegamos os dados de DENTRO do objeto que você enviou
+            valores = (veiculo.marca,veiculo.modelo,veiculo.ano,veiculo.placa,veiculo.ID_DONO)
+            cursor.execute(sql, valores)
+            self.conn.commit()
+            print("Veiculo inserido com sucesso")
+            return True
+        except Exception as erro:
+            print(erro,"Ao tentar isnerir No BANCO DE DADOS")
+            return False
+    def listar(self):
+        try:
+            cursor = self.conn.cursor()
+            lista = pd.read_sql_query("SELECT * FROM Veiculos", self.conn)
+            return lista#list é palavra reservada
+        except Exception as erro:
+            print("Erro ao buscar no Banco de  dados ")
+            return None
+    def atualizar(self,veiculo):
+        """Recebe o objeto com os novos dados e o ID, e atualiza o banco"""
+        try:
+            cursor = self.conn.cursor()
+            # O SQL usa o WHERE ID = ? para saber EXATAMENTE qual carro mudar
+            sql = "UPDATE Veiculos SET MARCA=?,MODELO=?,ANO=?,PLACA=?, ID_DONO=? WHERE ID=?"
+                # o ID vai por último, para casar com o WHERE
+            valores = (veiculo.marca,veiculo.modelo,veiculo.ano,veiculo.placa,veiculo.ID_DONO, veiculo.ID)
+            cursor.execute(sql, valores)
+            self.conn.commit()
+            print("Veiculo atualizado com sucesso")
+            return True
+        except Exception as erro:
+            print("Erro ao atualizar o Banco de dados",erro)
+            return False
+    def deletar(self,id_alvo):
+        try:
+            """Vamos Deletar o que foi inserido no banco de dados"""
+            cursor = self.conn.cursor()
+            sql = "DELETE FROM Veiculos WHERE ID = ?"
+            cursor.execute(sql, (id_alvo,))
+            self.conn.commit()
+            #Verificando se alguma linha foi realemte afetada
+            if cursor.rowcount > 0:
+                print("Veiculo deletado com sucesso")
+                return True
+            else:
+                print(f"Nenhum Veiculo deletado com sucesso{id_alvo}.")
+                return False
+        except Exception as erro:
+            print("Erro ao deletar o Banco de dados",erro)
 
 def limpar_tela():
     os.system('cls' if os.name == 'nt' else 'clear')
@@ -218,28 +284,35 @@ def Cadastrar_Veiculos(conn):
     print("Cadastro de Veículos")
     print("=" * 30)
     try:
-        MARCA = input("Informe a Marca: ")
-        MODELO = input("Informe a Modelo: ")
+        MARCA = input("Informe a Marca: ").strip()
+        MODELO = input("Informe a Modelo: ").strip()
 
         # PROTEÇÃO ANO
         while True:
             ANO = input("Informe o Ano: ").strip()
-            if ANO.isdigit(): break
+            if ANO.isdigit():
+                break
             print("⚠️ Digite apenas números para o ano!")
 
-        PLACA = input("Informe a Placa: ")
+        PLACA = input("Informe a Placa: ").strip()
 
         # PROTEÇÃO ID DONO
         while True:
             ID_DONO = input("Informe o ID do comprador: ").strip()
-            if ID_DONO.isdigit(): break
+            if ID_DONO.isdigit():
+                break
             print("⚠️ Digite apenas números para o ID do comprador!")
-
-        cursor = conn.cursor()
-        cursor.execute("INSERT INTO Veiculos(MARCA,MODELO,ANO,PLACA,ID_DONO) VALUES(?,?,?,?,?)",
-                       (MARCA, MODELO, ANO, PLACA, ID_DONO))
-        conn.commit()
-        print("✅ Veículo cadastrado!")
+        """
+            cursor = conn.cursor()
+            cursor.execute("INSERT INTO Veiculos(MARCA,MODELO,ANO,PLACA,ID_DONO) VALUES(?,?,?,?,?)",
+                           (MARCA, MODELO, ANO, PLACA, ID_DONO))
+            conn.commit()
+            print("✅ Veículo cadastrado!")
+        """
+        #Criamos o objeto (Instanciação)
+        novo_carro = Veiculo(MARCA,MODELO,ANO,PLACA,ID_DONO)
+        depoS = VeiculosEstoque(conn)
+        depoS.inserir(novo_carro)
     except sqlite3.Error as erro:
         print("Erro no Banco de Dados", erro)
     input("Aperte ENTER para continuar...")
@@ -251,12 +324,14 @@ def Listar_Veiculos(conn):
         print("=" * 45)
         print("Lista de Veiculos")
         print("=" * 45)
-        df = pd.read_sql_query("SELECT * FROM Veiculos", conn)
-        if df.empty:
+        #df = pd.read_sql_query("SELECT * FROM Veiculos", conn)
+        estoque = VeiculosEstoque(conn)# chamo o repositório lá em cima
+        lista = estoque.listar()
+        if lista is None or lista.empty:# Aqui ele ve se o alvo é nulo pelo none, dando erro e o empty, olha se o banco está vazio
             print("Lista Vazia")
         else:
             print("=" * 45)
-            print(tabulate(df, headers='keys', tablefmt='fancy_grid', showindex=False))
+            print(tabulate(lista, headers='keys', tablefmt='fancy_grid', showindex=False))
             print("=" * 60)
         input("Aperte ENTER para voltar ao menu")
     except Exception as erro:
@@ -276,11 +351,11 @@ def Alterar_Modelos(conn):
             ID = input("Informe o ID do Modelo: ").strip()
             if ID.isdigit(): break
             print("⚠️ Digite apenas números!")
-
+        #Busca os dados atuais para mostar ao usuário
         cursor.execute("SELECT * FROM Veiculos WHERE ID=?", (ID,))
         resultado = cursor.fetchone()
         if resultado:
-            print("Veículo atual:", resultado)
+            print(f"Veículo atual:, {resultado[1]} | {resultado[2]} | {resultado[3]} | {resultado[4]} | {resultado[5]}")
             print("=" * 45)
             nova_Marca = input("Novo Marca: ").strip() or resultado[1]
             novo_Modelo = input("Novo Modelo: ").strip() or resultado[2]
@@ -293,9 +368,19 @@ def Alterar_Modelos(conn):
 
             placa_nova = input("Nova Placa: ").strip() or resultado[4]
 
-            cursor.execute("UPDATE Veiculos SET MARCA=?, MODELO=?, ANO=?, PLACA=? WHERE ID=?",
-                           (nova_Marca, novo_Modelo, ano_Veiculo, placa_nova, ID))
-            conn.commit()
+            while True:
+                ID_DONO = input("Informe o ID do comprador: ").strip() or resultado[5]
+                if str(ID_DONO).isdigit(): break
+                print("Digite apenas Números!")
+
+            #cursor.execute("UPDATE Veiculos SET MARCA=?, MODELO=?, ANO=?, PLACA=? WHERE ID=?",
+                           #(nova_Marca, novo_Modelo, ano_Veiculo, placa_nova, ID))
+            editar_veiculo = Veiculo(nova_Marca,novo_Modelo,ano_Veiculo,placa_nova,ID_DONO, ID=ID)
+
+            # Agora Vamos atualizar o repositório/estoque
+            estoque = VeiculosEstoque(conn)
+            if estoque.atualizar(editar_veiculo):
+                conn.commit()
             print("✅ Veículo alterado com sucesso")
         else:
             print("ID Não encontrada")
@@ -322,10 +407,12 @@ def Deletar_Modelos(conn):
         resultado = cursor.fetchone()
 
         if resultado:
-            print(f"Dados para exclusão: {resultado[1]} {resultado[2]}")
+            print(f"Dados para exclusão: {resultado[1]} | {resultado[2]} | {resultado[3]} | {resultado[4]} | {resultado[5]}")
             Confirmar = input("Confirmar exclusão S/N? ").upper()
             if Confirmar == "S":
-                cursor.execute("DELETE FROM Veiculos WHERE ID=?", (ID_Alvo,))
+                #cursor.execute("DELETE FROM Veiculos WHERE ID=?", (ID_Alvo,))
+                estoque = VeiculosEstoque(conn)
+                estoque.deletar(ID_Alvo)
                 conn.commit()
                 print(f"✅ Veículo deletado!")
             else:
