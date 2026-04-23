@@ -1,4 +1,6 @@
-
+from pickle import INST
+from sys import excepthook
+from tkinter.constants import INSERT
 
 import pandas as pd
 from tabulate import tabulate # Importa uma Vestimenta Bombada para as tabelas
@@ -22,7 +24,7 @@ def Iniciar_Banco_De_Dados():
         print("Liberado para Uso")
 
         #CRIAÇÃO DO BANCO DOS VEÍCULOS
-        cursor.execute('''CREATE TABLE IF NOT EXISTS Veiculos(ID INTEGER PRIMARY KEY AUTOINCREMENT, MARCA TEXT NOT NULL, MODELO TEXT NOT NULL,ANO INTEGER NOT NULL ,PLACA TEXT NOT NULL UNIQUE, ID_DONO INTEGER NOT NULL DEFAULT 1)''')
+        cursor.execute('''CREATE TABLE IF NOT EXISTS Veiculos(ID INTEGER PRIMARY KEY AUTOINCREMENT, MARCA TEXT NOT NULL, MODELO TEXT NOT NULL,ANO INTEGER NOT NULL ,PLACA TEXT NOT NULL UNIQUE, ID_DONO INTEGER NOT NULL )''')
         conn.commit()
         return conn# Só pode ter um na sessão das tabelas
 
@@ -34,14 +36,11 @@ conexao = Iniciar_Banco_De_Dados()
 
 
 def cadastra_Clientes(conn):
-    try:
-        print("="*45)
-        print("Cadastro  de Clientes")
-        print("="*45)
-       # Transforma numa tabela usando o pandas, ele lê
-       # o arquivo e faz tipo uma tabela do excel
-    except sqlite3.Error as e:
-        print("Erro ao listar",e)
+
+    print("="*45)
+    print("Cadastro  de Clientes")
+    print("="*45)
+
     try:
         Nome = input("Insira o nome do cliente: ").strip()
         CPF = input("Insira o CPF do cliente: ").strip()
@@ -111,8 +110,7 @@ def deletar_Clientes(conn):
             if Confirmar == "S":#Agora vamos para a parte que deleta
                 cursor.execute("DELETE FROM Clientes WHERE ID=?",(ID_alvo,))
                 conn.commit()
-                print(
-                    f"✅ Cliente Deletado: ID {ID_alvo} | Nome: {Nome_alvo} | CPF: {CPF_Alvo} | Idade: {Idade_alvo} | Sexo: {Sexo_alvo}")
+                print(f" Cliente Deletado: ID {ID_alvo} | Nome: {Nome_alvo} | CPF: {CPF_Alvo} | Idade: {Idade_alvo} | Sexo: {Sexo_alvo}")
             else:
                 print("Nenhuma ID inserida: "+" Operação cancelada")
     except sqlite3.Error as erro:
@@ -160,38 +158,143 @@ def alterar_Clientes(conn):
         print("Nenhum Cliente Pertence a essa ID",erro)
     input("Aperte ENTER para continuar ou voltar ao menu: ")
 
-    
-while True:
+def Cadastrar_Veiculos(conn):
 
-        print("=" * 30)
-        print("==========Menu Do Sistema=========")
-        print("=" * 30)
-        print("[1] Inserir dados")
-        print("[2] Listar clientes")
-        print("[3] alterar dados")
-        print("[4] Deletar dados")
-        print("[0] Sair")
-        print("=" * 35)
+        limpar_tela()
+        print("="*30)
+        print("Cadastro de Veículos")
+        print("="*30)
+        try:
+            MARCA= input("Informe a Marca")
+            MODELO = input("Informe a Modelo")
+            ANO = input("Informe a Ano")
+            PLACA = input("Informe a Placa")
+            ID_DONO = input("Informe o ID do comprador")
+            cursor = conn.cursor()
+            cursor.execute("INSERT INTO Veiculos(MARCA,MODELO,ANO,PLACA,ID_DONO) VALUES(?,?,?,?,?)",(MARCA,MODELO,ANO,PLACA,ID_DONO))
+            conn.commit()
+            print("Veiculo cadastrado com sucesso")
+        except ValueError as erro:
+            print("Nenhuma ID Válida inserida")
+        except sqlite3.Error as erro:
+            print("Erro no Banco de Dados")
 
-
-        opcao = input("Escolha A Opção: ").strip()# .strip remove espaços vazios, antes  # e depois do que foi escrito
-
-        match opcao:
-            case "1":
-             cadastra_Clientes(conexao)# aqui eu faço a conexão com a função cadastr clientes no Banco
-
-            case "2":
-                Listar_Clientes(conexao)#Aqui eu faço a listagem do que está armazenado
-            case "3":
-                alterar_Clientes(conexao)
-
-            case "4":
-                deletar_Clientes(conexao)
-
-            case "0":
+def Cadastro_clientes_Menu():
+    try:
+        while True:
                 limpar_tela()
-                print("Saindo do sistema")
-                conexao.close()
-                break
-            case _:
-                print("Apenas opções Listadas")
+                print("=" * 30)
+                print("==========Menu Do Sub_Sistema=========")
+                print("=" * 30)
+                print("[1] Cadastrar Cliente")
+                print("[2] Listar clientes")
+                print("[3] alterar dados")
+                print("[4] Deletar dados")
+                print("[0] Sair")
+                print("=" * 35)
+
+
+                opcao = input("Escolha A Opção: ").strip()# .strip remove espaços vazios, antes  # e depois do que foi escrito
+
+                match opcao:
+                    case "1":
+                     cadastra_Clientes(conexao)# aqui eu faço a conexão com a função cadastr clientes no Banco
+
+                    case "2":
+                        Listar_Clientes(conexao)#Aqui eu faço a listagem do que está armazenado
+                    case "3":
+                        alterar_Clientes(conexao)
+
+                    case "4":
+                        deletar_Clientes(conexao)
+
+                    case "0":
+                        limpar_tela()
+                        print("Saindo do sistema")
+                        conexao.close()
+                        break
+                    case _:
+                        print("Apenas opções Listadas")
+    except ValueError as erro:
+            print("Nenhuma opção Válida inserida",erro)
+            input("Aperte ENTER para continuar ou voltar ao menu: ")
+            #Cadastro_clientes()# Colocando ele aqui, eu Consigo reiniciar e o menu apareça de novo, em vez o programa crashar
+            print("-"*45)
+    except sqlite3.Error as erro:
+            print("Erro",erro)# informa algum erro genérico
+            input("Aperte ENTER para continuar ou voltar ao menu: ")
+    except Exception as erro:
+        print("Erro",erro)# Funciona como uma rede de segurança final. Se acontecer algo que não previmos
+        # (como falta de permissão na pasta ou falta de memória), o programa avisa o que é em vez de simplesmente sumir.
+        input("Aperte ENTER para continuar ou voltar ao menu: ")
+
+def Cadastro_veiculos_Menu():
+    try:
+        while True:
+            limpar_tela()
+            print("="*30)
+            print("========Menu Do Sub_Sistema=========")
+            print("="*30)
+            print("1: Cadastrar Veículo")
+            print("2: Listar Modelos")
+            print("3: Alterar Modelo")
+            print("4: Deletar Modelo")
+            print("0: Sair")
+            print("=" * 35)
+
+            opcao = input("Escolha A Opção: ").strip()
+            match opcao:
+                case "1":
+                    Cadastrar_Veiculos(conexao)
+    except ValueError as erro:
+        print("Nenhuma Opção Válida Inserida ")
+
+def Listar_Veiculos(conn):
+    try:
+        limpar_tela()
+        # pd.set.option("display.max_colwidth",30)#limita nomes gigantes
+        # pd.set_option("display.width",None)#Usa toda a largura do terminal
+        # pd.set_option("display.colheader_justify","center")# Alihamento do título
+
+        print("=" * 45)
+        print("Lista de Veiculos")
+        print("=" * 45)
+        df = pd.read_sql_query("SELECT * FROM Veiculos",conn)  # Transforma numa tabela usando o pandas, ele lê                                              # o arquivo e faz tipo uma tabela do excel
+        if df.empty:
+            print("Lista Vazia")
+        else:
+            print("=" * 45)
+            # O 'headers' pega os nomes das colunas do banco
+            # O 'tablefmt' define o desenho da tabela (o 'fancy_grid' é o mais bonito)
+            # tabulete
+            print(tabulate(df, headers='keys', tablefmt='fancy_grid', showindex=False))
+            print("=" * 60)
+        input("Aperte ENTER para voltar ao menu")
+    except pd.io.sql.DatabaseError as erro_sql:
+        # Este captura erros específicos do comando SQL (ex: nome da tabela errado)
+        print(f"\n Erro de comando: Verifique se a tabela 'Clientes' existe. {erro_sql}")
+    except sqlite3.Error as erro2_geral:
+        print("Erro Inesperado", erro2_geral)
+
+
+print("="*35)
+print(f"Menu do Sistema:")
+print("="*35)
+print("1: Cadastrar Cliente")
+print("2: Cadastrar Veiculo")
+print("0: Sair")
+OP = input("Escolha a Opção: ").strip()
+while True:
+    limpar_tela()
+    match OP:
+     case "1":
+       Cadastro_clientes_Menu()
+     case "2":
+       Cadastro_veiculos_Menu()
+     case "0":
+        print("Saindo do sistema")
+        if conexao:
+            conexao.close
+        break
+     case _:
+        print("Apenas Opções Listadas")
