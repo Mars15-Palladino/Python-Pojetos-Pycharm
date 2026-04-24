@@ -1,99 +1,25 @@
 import os
 import sqlite3
-from math import trunc
-from symtable import Class
 from unittest import case
 
-import pandas as panda # chamo o panda
 import pandas as pd
-from tabulate import  tabulate # importo as tabelas bonitas
-import sqlite3 as sql #Chamo a ferramenta do Banco de dados
+from tabulate import tabulate
 
+
+# =================================================================
+# CLASSES DE ENTIDADE (MODELO)
+# =================================================================
 class CLIENTES:
-    def __init__(self,ID_C,CPF,NOME,SEXO,IDADE):
+    def __init__(self, ID_C, CPF, NOME, SEXO, IDADE):
         self.ID_C = ID_C
         self.CPF = CPF
         self.NOME = NOME
         self.SEXO = SEXO
         self.IDADE = IDADE
-class clientesOperacao:
-    def __init__(self,ConexaoAoBanCO):
-        self.ConnP = ConexaoAoBanCO
-    def inserirCliente(self,ClientesIN):
-        """Aqui receba os comandos e os traduzo para o sql"""
-        try:
-            cursorP = self.ConnP.cursor()
-            sql = "INSERT INTO CLIENTES(CPF,NOME,SEXO,IDADE) VALUES (?,?,?,?)"# AS INTERROGAÇÕES DEVEM BATER COM OS PARÂMETROS
-            # OS DADOS VIRAM LÁ DEBAIXO
-            valoresP = (ClientesIN.CPF,ClientesIN.NOME,ClientesIN.SEXO,ClientesIN.IDADE)
-            cursorP.execute(sql, valoresP)#Aqui eu mando os dados para o banco para serem salvos
-            self.ConnP.commit()
-            print("Cliente adicionado com sucesso")
-            return True
-        except sqlite3.Error as erro:
-            print("Erro no banco de dados.",erro)
-    def listarClientes(self,ClientesIN):
-        """Aqui recebe os comandos e os traduzo para o sql"""
-        try:
-            cursorP = self.ConnP.cursor()
-            listaClientes = pd.read_sql_query("SELECT * FROM CLIENTES", self.ConnP)
-            print(tabulate(listaClientes, headers="keys", tablefmt="fancy_grid", showindex=False))
-            return listaClientes
-        except sqlite3.Error as erro:
-            print("Erro no banco de dados.",erro)
-    def alterarClientes(self,ClientesIN):
-        """Aqui Procedimento para alteração do cadastro"""
-        try:
-            cursorP = self.ConnP.cursor()
-            cursorP.execute("SELECT * FROM CLIENTES WHERE ID_C = ?", (ClientesIN.ID_C,))
-            ClienteAlterar = cursorP.fetchone()  # fetchone, pega apenas a linha referida
-            if not ClienteAlterar:
-                print("Cliente não encontrado")
-                return False
-            print(f"Dados Há deletar {ClienteAlterar[1]} | {ClienteAlterar[2]} | {ClienteAlterar[3]} | {ClienteAlterar[4]}")
-            confirmar = input("Deseja alterar os clientes? (S/N) ").strip().upper()
-            if confirmar == "S":
-                    cursorP = self.ConnP.cursor()
-                    sql = "UPDATE CLIENTES SET CPF=?,NOME=?,SEXO=?,IDADE=? WHERE ID_C = ?"
-                    valoresP = (ClientesIN.CPF,ClientesIN.NOME,ClientesIN.SEXO,ClientesIN.IDADE,ClientesIN.ID_C,)
-                    cursorP.execute(sql, valoresP)
-                    self.ConnP.commit()
-                    print("Cliente alterado com sucesso")
-                    print("Aperte enter para continuar ou voltar ao menu")
-        except sqlite3.Error as erro:
-            print("Erro no banco de dados.",erro)
-
-    def deletarClientes(self,ClientesIN):
-        """Aqui Procedimento para deletar os clientes"""
-        try:
-            #Procurar o cliente pelo ID e depois deletar
-            cursorP = self.ConnP.cursor()
-            cursorP.execute("SELECT * FROM CLIENTES WHERE ID_C = ?",(ClientesIN.ID_C,))
-            ClienteExclusao = cursorP.fetchone()# fetchone, pega apenas a linha referida
-            if not ClienteExclusao:
-                print("Cliente Não encontrado no sistema")
-                print("Aperte enter para continuar ou voltar ao menu")
-                return False
-            print(f"Alteração de Dados: {ClienteExclusao[1]} | {ClienteExclusao[2]} | {ClienteExclusao[3]} | {ClienteExclusao[4]}")
-
-            confirmar = input("Deseja deletar os clientes? (S/N) ").strip().upper()
-            if confirmar == "S":
-                sql = "DELETE FROM CLIENTES WHERE ID_C = ?"
-                cursorP.execute(sql, (ClientesIN.ID_C,))#lembre se de colocar a vírgula para transformar em Tupla
-                self.ConnP.commit()
-                if cursorP.rowcount > 0:
-                    print("Cliente deletado com sucesso")
-                    input("Aperte enter para continuar ou voltar ao menu")
-                return True
-            else:
-                print("Operação Cancelada")
-                return False
-        except sqlite3.Error as erro:
-                print("Erro no banco de dados.",erro)
 
 
 class VEICULOS:
-    def __init__(self,ID_V,MARCA,MODELO,ANO,PLACA,ID_DONO,):
+    def __init__(self, ID_V, MARCA, MODELO, ANO, PLACA, ID_DONO):
         self.ID_V = ID_V
         self.MARCA = MARCA
         self.MODELO = MODELO
@@ -101,285 +27,410 @@ class VEICULOS:
         self.PLACA = PLACA
         self.ID_DONO = ID_DONO
 
+
+# =================================================================
+# CLASSES DE OPERAÇÃO (REPOSITÓRIO)
+# =================================================================
+class clientesOperacao:
+    def __init__(self, ConexaoAoBanCO):
+        self.ConnP = ConexaoAoBanCO
+
+    def inserirCliente(self, ClientesIN):
+        try:
+            cursorP = self.ConnP.cursor()
+            sql = "INSERT INTO CLIENTES(CPF,NOME,SEXO,IDADE) VALUES (?,?,?,?)"
+            valoresP = (ClientesIN.CPF, ClientesIN.NOME, ClientesIN.SEXO, ClientesIN.IDADE)
+            cursorP.execute(sql, valoresP)
+            self.ConnP.commit()
+            print("✅ Cliente adicionado com sucesso")
+            return True
+        except sqlite3.Error as erro:
+            print("⚠️ Erro no banco de dados.", erro)
+
+    def listarClientes(self):
+        try:
+            listaClientes = pd.read_sql_query("SELECT * FROM CLIENTES", self.ConnP)
+            return listaClientes
+        except sqlite3.Error as erro:
+            print("⚠️ Erro no banco de dados.", erro)
+
+    def alterarClientes(self, ClientesIN):
+        try:
+            cursorP = self.ConnP.cursor()
+            sql = "UPDATE CLIENTES SET CPF=?, NOME=?, SEXO=?, IDADE=? WHERE ID_C = ?"
+            valoresP = (ClientesIN.CPF, ClientesIN.NOME, ClientesIN.SEXO, ClientesIN.IDADE, ClientesIN.ID_C)
+            cursorP.execute(sql, valoresP)
+            self.ConnP.commit()
+            return True
+        except sqlite3.Error as erro:
+            print("⚠️ Erro no banco de dados.", erro)
+
+    def deletarClientes(self, ID_C):
+        try:
+            cursorP = self.ConnP.cursor()
+            sql = "DELETE FROM CLIENTES WHERE ID_C = ?"
+            cursorP.execute(sql, (ID_C,))
+            self.ConnP.commit()
+            return True
+        except sqlite3.Error as erro:
+            print("⚠️ Erro no banco de dados.", erro)
+
+
 class veiculosOperacao:
     def __init__(self, ConexaoAoBanCO):
         self.ConnP = ConexaoAoBanCO
-    def inserirVeiculo(self,VeiculosIN):
-        """Aqui recebo os comandos e os traduzo para o sql"""
+
+    def inserirVeiculo(self, VeiculosIN):
         try:
             cursorP = self.ConnP.cursor()
-            sql = "INSERT INTO VEICULOS(MARCA,MODELO,ANO,PLACA,ID_DONO) VALUES (?,?,?,?,?)"# AS INTERROGAÇÕES DEVEM BATER COM OS PARÂMETROS
-            #AQUI OS DADOS VIRAM LÁ DE BAIXO
-            valoresP = (VeiculosIN.MARCA,VeiculosIN.MODELO,VeiculosIN.ANO,VeiculosIN.PLACA,VeiculosIN.ID_DONO)
+            sql = "INSERT INTO VEICULOS(MARCA,MODELO,ANO,PLACA,ID_DONO) VALUES (?,?,?,?,?)"
+            valoresP = (VeiculosIN.MARCA, VeiculosIN.MODELO, VeiculosIN.ANO, VeiculosIN.PLACA, VeiculosIN.ID_DONO)
             cursorP.execute(sql, valoresP)
             self.ConnP.commit()
-            print("Veiculo adicionado com sucesso")
+            print("✅ Veículo adicionado com sucesso")
             return True
         except sqlite3.Error as erro:
-            print("Erro no banco de dados.",erro)
+            print("⚠️ Erro no banco de dados.", erro)
 
-    def listarVeiculos(self,VeiculosIN):
-        """Aqui recebe os comandos e os traduzo para o sql"""
+    def listarVeiculos(self):
         try:
-            cursorP = self.ConnP.cursor()
-            listaVeiculos = pd.read_sql_query("SELECT * FROM VEICULOS", self.ConnP)# só cham o comando
-            print(tabulate(listaVeiculos,headers="keys", tablefmt="fancy_grid", showindex=False))
+            listaVeiculos = pd.read_sql_query("SELECT * FROM VEICULOS", self.ConnP)
             return listaVeiculos
         except sqlite3.Error as erro:
-            print("Erro no banco de dados.",erro)
+            print("⚠️ Erro no banco de dados.", erro)
 
-    def alterarVeiculo(self,VeiculosIN):
+    def alterarVeiculo(self, VeiculosIN):
         try:
             cursorP = self.ConnP.cursor()
-            cursorP.execute("SELECT * FROM VEICULOS WHERE ID_V=?",(VeiculosIN.ID_V,))
-            veiculoAlterar = cursorP.fetchone()
-            if not veiculoAlterar:
-                print("Veiculo não encontrado no sistema")
-                return False
-            print(f"Veiculo Ha ser alterado {veiculoAlterar[0]} | {veiculoAlterar[1]} | {veiculoAlterar[2]} | {veiculoAlterar[3]} | {veiculoAlterar[4]} | {veiculoAlterar[5]}")
-            confirmar = input("Alterar Veiculo? (S/N) ").strip().upper()
-            if confirmar == "S":
-                sql = "UPDATE VEICULOS SET MARCA=?,MODELO=?,ANO=?,PLACA=?, ID_DONO=? WHERE ID_V=?"
-                valoresP = (VeiculosIN.MARCA,VeiculosIN.MODELO,VeiculosIN.ANO,VeiculosIN.PLACA,VeiculosIN.ID_DONO,VeiculosIN.ID_V)
-                cursorP.execute(sql, valoresP)
-                self.ConnP.commit()
-                print("Veiculo alterado com sucesso")
-                input("Pressione ENTER para continuar")
-                return True
+            sql = "UPDATE VEICULOS SET MARCA=?, MODELO=?, ANO=?, PLACA=?, ID_DONO=? WHERE ID_V=?"
+            valoresP = (VeiculosIN.MARCA, VeiculosIN.MODELO, VeiculosIN.ANO, VeiculosIN.PLACA, VeiculosIN.ID_DONO,
+                        VeiculosIN.ID_V)
+            cursorP.execute(sql, valoresP)
+            self.ConnP.commit()
+            return True
         except sqlite3.Error as erro:
-            print("Erro no banco de dados.",erro)
-    def deletarVeiculo(self,VeiculoIN):
+            print("⚠️ Erro no banco de dados.", erro)
+
+    def deletarVeiculo(self, ID_V):
         try:
             cursorP = self.ConnP.cursor()
-            cursorP.execute("SELECT * FROM VEICULOS WHERE ID_V=?",(VeiculoIN.ID_V,))
-            veiculoDeletar = cursorP.fetchone()
-            if not veiculoDeletar:
-                print("Veiculo nã encontrado no sistema")
-                return False
-            print(f"Veiculo ha ser deletado: {veiculoDeletar[0]} | {veiculoDeletar[1]} | {veiculoDeletar[2]} | {veiculoDeletar[3]} | {veiculoDeletar[4]} | {veiculoDeletar[5]}")
-            consfirmar = input("Deletar Veiculo? (S/N) ").strip().upper()
-            if consfirmar == "S":
-                sql = "DELETE FROM VEICULOS WHERE ID_V=?"
-                cursorP.execute(sql,(VeiculoIN.ID_V,))
-                self.ConnP.commit()
-                print("Veiculo deletado com sucesso")
-                return True
+            sql = "DELETE FROM VEICULOS WHERE ID_V=?"
+            cursorP.execute(sql, (ID_V,))
+            self.ConnP.commit()
+            return True
+        except sqlite3.Error as erro:
+            print("⚠️ Erro no banco de dados.", erro)
+
+
+# =================================================================
+# FUNÇÕES DE INTERAÇÃO (MENUS)
+# =================================================================
+
+def cadastra_Clientes(conn):
+    print("=" * 45)
+    print("Cadastro de Clientes")
+    print("=" * 45)
+    Nome = input("Insira o nome do cliente: ").strip()
+    CPF = input("Insira o CPF do cliente: ").strip()
+    Sexo = input("Insira o sexo do cliente M/F: ").strip().upper()
+    while True:
+        Idade = input("Insira a Idade do cliente: ").strip()
+        if Idade.isdigit(): break
+        print("⚠️ Erro: Digite apenas números!")
+
+    novo_cliente = CLIENTES(None, CPF, Nome, Sexo, int(Idade))
+    operacao = clientesOperacao(conn)
+    operacao.inserirCliente(novo_cliente)
+    input("\nAperte ENTER para voltar ao menu")
+
+def Listar_Clientes(conn):
+    limpar_tela()
+    print("=" * 45)
+    print("Lista de Clientes")
+    print("=" * 45)
+    operacao = clientesOperacao(conn)
+    df = operacao.listarClientes()
+    if df is None or df.empty:
+        print("Lista Vazia")
+    else:
+        print(tabulate(df, headers='keys', tablefmt='fancy_grid', showindex=False))
+        input("\nAperte ENTER para voltar ao menu")
+
+
+def deletar_Clientes(conn):
+    limpar_tela()
+    print("=" * 45)
+    print("Deletar Clientes")
+    print("=" * 45)
+    while True:
+        entrada = input("Insira o ID do cliente: ").strip()
+        if entrada.isdigit():
+            ID_alvo = int(entrada)
+            break
+        print("⚠️ Erro: O ID deve ser um número!")
+
+    operacao = clientesOperacao(conn)
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM CLIENTES WHERE ID_C=?", (ID_alvo,))
+    resultado = cursor.fetchone()
+
+    if resultado:
+        print(f"DADOS: {resultado[2]} | CPF: {resultado[1]}")
+        confirmar = input("Confirmar exclusão S/N? ").upper()
+        if confirmar == "S":
+            operacao.deletarClientes(ID_alvo)
+            print("✅ Cliente Deletado!")
+    else:
+        print("❌ ID não encontrado.")
+        input("Aperte ENTER para continuar...")
+
+
+def alterar_Clientes(conn):
+    limpar_tela()
+    print("=" * 45)
+    print("Alterar Clientes")
+    print("=" * 45)
+    while True:
+        entrada = input("Insira o ID do cliente: ").strip()
+        if entrada.isdigit():
+            ID_alvo = int(entrada)
+            break
+        print("⚠️ Erro: O ID deve ser um número!")
+
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM CLIENTES WHERE ID_C=?", (ID_alvo,))
+    res = cursor.fetchone()
+    if res:
+        print("Dados atuais:", res)
+        novo_nome = input("Novo nome (Enter p/ manter): ").strip() or res[2]
+        novo_cpf = input("Novo CPF (Enter p/ manter): ").strip() or res[1]
+        nova_idade = input("Nova Idade (Enter p/ manter): ").strip() or res[4]
+        novo_sexo = input("Novo Sexo (Enter p/ manter): ").strip().upper() or res[3]
+
+        cliente_editado = CLIENTES(ID_alvo, novo_cpf, novo_nome, novo_sexo, int(nova_idade))
+        operacao = clientesOperacao(conn)
+        if operacao.alterarClientes(cliente_editado):
+            print("✅ Cliente alterado!")
+    else:
+        print("❌ ID não encontrado")
+        input("Aperte ENTER para continuar...")
+
+
+def Cadastrar_Veiculos(conn):
+    limpar_tela()
+    print("=" * 30)
+    print("Cadastro de Veículos")
+    print("=" * 30)
+    marca = input("Marca: ").strip()
+    modelo = input("Modelo: ").strip()
+    while True:
+        ano = input("Ano: ").strip()
+        if ano.isdigit(): break
+    placa = input("Placa: ").strip()
+    while True:
+        id_dono = input("ID do Comprador: ").strip()
+        if id_dono.isdigit(): break
+
+    novo_carro = VEICULOS(None, marca, modelo, int(ano), placa, int(id_dono))
+    estoque = veiculosOperacao(conn)
+    estoque.inserirVeiculo(novo_carro)
+    input("Aperte ENTER para continuar...")
+
+
+def Listar_Veiculos(conn):
+    limpar_tela()
+    print("=" * 45)
+    print("Lista de Veículos")
+    print("=" * 45)
+    estoque = veiculosOperacao(conn)
+    df = estoque.listarVeiculos()
+    if df is None or df.empty:
+        print("Lista Vazia")
+    else:
+        print(tabulate(df, headers='keys', tablefmt='fancy_grid', showindex=False))
+        input("\nAperte ENTER para voltar")
+
+
+def Alterar_Modelos(conn):
+    limpar_tela()
+    print("=" * 45)
+    print("Alterar Modelo")
+    print("=" * 45)
+    id_v = input("Informe o ID do Veículo: ").strip()
+    if not id_v.isdigit(): return
+
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM VEICULOS WHERE ID_V=?", (id_v,))
+    res = cursor.fetchone()
+    if res:
+        print("Dados atuais:", res)
+        m = input("Nova Marca: ").strip() or res[1]
+        mod = input("Novo Modelo: ").strip() or res[2]
+        a = input("Novo Ano: ").strip() or res[4]
+        p = input("Nova Placa: ").strip() or res[3]
+        d = input("Novo ID Dono: ").strip() or res[5]
+
+        editado = VEICULOS(id_v, m, mod, int(a), p, int(d))
+        operacao = veiculosOperacao(conn)
+        operacao.alterarVeiculo(editado)
+        print("✅ Veículo alterado!")
+    else:
+        print("❌ Veículo não encontrado")
+        input("Aperte ENTER para continuar...")
+
+
+def Deletar_Modelos(conn):
+    try:
+        limpar_tela()
+        print("=" * 45)
+        print("Deletar Modelo")
+        print("=" * 45)
+        id_v = input("ID do Veículo para deletar: ").strip()
+        if not id_v.isdigit(): return
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM VEICULOS WHERE ID_V=?", (id_v,))
+        res = cursor.fetchone()
+        print(f"Veículo atual:, {res[1]} | {res[2]} | {res[3]} | {res[4]} | {res[5]}")
+        confirmar = input("Deseja excluir? S/N...").strip().upper()
+        if confirmar == "S":
+            operacao = veiculosOperacao(conn)
+            if operacao.deletarVeiculo(int(id_v)):
+                print("✅ Veículo removido!")
             else:
-                print("Operação Cancelada")
-                return False
-        except sqlite3.Error as erro:
-            print("Erro no banco de dados.",erro)
+                print("Nenhum veículo pertencente a essa ID_V")
+        else:
+            print("Operação cancelada!")
+            input("Aperte ENTER para continuar...")
+    except Exception as e:
+        print("Ocorreu um erro",e)
+        input("Aperte ENTER para continuar...")
+
+# =================================================================
+# SISTEMA PRINCIPAL
+# =================================================================
 
 def limpar_tela():
     os.system('cls' if os.name == 'nt' else 'clear')
+
+
 def iniciar_Banco_De_Dados():
     try:
         connP = sqlite3.connect('banco_de_dados_Financiamento.db')
-        print("..............Conectado Ao Banco de Dados.............", sqlite3.sqlite_version)
-        connP.execute("PRAGMA foreign_keys = ON")
-        cursorP = connP.cursor()# Libera a conexão com o tunel para trabalhar com o Banco de dados
-
-        cursorP.execute('''CREATE TABLE IF NOT EXISTS CLIENTES(ID_C INTEGER PRIMARY KEY AUTOINCREMENT,  
-                        CPF VARCHAR(14) NOT NULL UNIQUE,
-                        NOME VARCHAR(40) NOT NULL,
-                        SEXO VARCHAR(1) NOT NULL,
-                        IDADE INTEGER NOT NULL DEFAULT 0)''')
-
-        """#return connP # para usar nas classes POO, PORÉM DEVE SER ABERTO AO FINAL DA OPERAÇÃO"""
-
-        cursorP.execute('''CREATE TABLE IF NOT EXISTS VEICULOS(ID_V INTEGER PRIMARY KEY AUTOINCREMENT,
-                        MARCA VARCHAR(15) NOT NULL,
-                        MODELO VARCHAR(45) NOT NULL,
-                        PLACA VARCHAR(10) NOT NULL,
-                        ANO INTEGER NOT NULL,
-                        ID_DONO INTEGER NOT NULL,
-                        FOREIGN KEY (ID_DONO) REFERENCES CLIENTES(ID_C))''')
-        connP.commit()# passa e carimba a informação
-        print("Liberado para Uso")
+        connP.execute("PRAGMA foreign_keys = OFF")
+        cursorP = connP.cursor()
+        cursorP.execute('''CREATE TABLE IF NOT EXISTS CLIENTES
+        (
+            ID_C
+            INTEGER
+            PRIMARY
+            KEY
+            AUTOINCREMENT,
+            CPF
+            VARCHAR
+                           (
+            14
+                           ) NOT NULL UNIQUE,
+            NOME VARCHAR
+                           (
+                               40
+                           ) NOT NULL,
+            SEXO VARCHAR
+                           (
+                               1
+                           ) NOT NULL,
+            IDADE INTEGER NOT NULL DEFAULT 0)''')
+        cursorP.execute('''CREATE TABLE IF NOT EXISTS VEICULOS
+        (
+            ID_V
+            INTEGER
+            PRIMARY
+            KEY
+            AUTOINCREMENT,
+            MARCA
+            VARCHAR
+                           (
+            15
+                           ) NOT NULL,
+            MODELO VARCHAR
+                           (
+                               45
+                           ) NOT NULL,
+            PLACA VARCHAR
+                           (
+                               10
+                           ) NOT NULL,
+            ANO INTEGER NOT NULL,
+            ID_DONO INTEGER NOT NULL,
+            FOREIGN KEY
+                           (
+                               ID_DONO
+                           ) REFERENCES CLIENTES
+                           (
+                               ID_C
+                           ))''')
+        connP.commit()
         return connP
     except sqlite3.Error as erro:
-        print("Erro na conexão com banco de dados.",erro)
-        return None # Aqui, para o que está fazendo se der erro
-limpar_tela()
-conexaoAoBanCO = iniciar_Banco_De_Dados()#Aqui abro a conexão para o banco de dados, através da função
-if not conexaoAoBanCO:
-    print("Erro fatal. Não foi Possível conectar ao banco de dados.")
-    input("Pressione ENTER para sair")
+        print("Erro na conexão.", erro)
+        return None
 
-def Cadastro_Clientes_Menu():
-    limpar_tela()
-    operacao = clientesOperacao(conexaoAoBanCO)# faz o código usar a conexão cria aqui em cima
+
+def Cadastro_clientes_Menu():
     while True:
         limpar_tela()
-        try:
-            print("-" * 30)
-            print("  SUB-MENU: CLIENTES")
-            print("-" * 30)
-            print("[1] Inserir Cliente")
-            print("[2] Listar Todos")
-            print("[3] Alterar Cadastro")
-            print("[4] Deletar Registro")
-            print("[0] Voltar")
-            escolha = input("Escolha a Opcao: ").strip()
-            match escolha:
-                case "1":
-                     novo_Cliente = CLIENTES(None,
-                                             input("Insira o CPF do Cliente").strip(),# .strip, não serve para inteiros, apenas para letras
-                                             input("Insira o NOME do cliente: ").strip(),
-                                             input("Insira o SEXO do cliente: ").strip(),
-                                             int(input("Insira a IDADE do cliente: ")))
-                     operacao.inserirCliente(novo_Cliente)
-                case "2":
-                    print("="*45)
-                    print("Lista de Clientes Cadastrados")
-                    print("="*45)
-                    operacao.listarClientes(None)
-                    input("Aperte enter para continuar...")
-                    print("="*45)
-                case "3":
-                    id_cliente = int(input("Insira o ID do cliente que deseja fazer alterações: "))
-                    #pedindo novos dados para atualizar
-                    mudar = CLIENTES(id_cliente,
-                                     input("Insira o CPF do cliente: ").strip(),
-                                     input("Insira o NOME a alterar: ").strip(),
-                                     input("Insira o SEXO do cliente: ").strip(),
-                                     int(input("Insira a IDADE do cliente: "))
-                                     )
-                    print("!AVISO")
-                    print("="*45)
-                    input("Aperte enter para continuar...")
-                    print("="*45)
-                    print("Leia com atenção as Mensagens")
-                    input("Aperte enter para continuar...")
-                    operacao.alterarClientes(mudar)
-                case "4":
-                    print("="*45)
-                    print("Deletar Cliente")
-                    print("="*45)
-                    id_cliente = int(input("Insira o ID do cliente: "))
-                    # pedindo dados para deletar
-                    deletar_Alvo = CLIENTES(id_cliente,None,None,None,None)
-                    operacao.deletarClientes(deletar_Alvo)
-                case "0":
-                    limpar_tela()
-                    print("="*45)
-                    print("Retornando ao Menu Principal")
-                    input("Aperte enter para ir ao menu...")
-                    break
-                case _:
-                    print("Apenas opções em Lista")
-                    input("Aperte enter para ir ao menu...")
-        except Exception as erro:
-            print("Erro na lista de Clientes",erro)
-            input("Aperte enter para ir ao menu...")
-        except ValueError as erro:
-            print("Você digitou uam letra onde era esperado Número",erro)
-            input("Aperte enter para ir ao menu...")
-
-
-def Cadastro_Veiculos_Menu():
-    limpar_tela()
-    # Faz o código usar a conexão global e a classe de operação de veículos
-    operacao_v = veiculosOperacao(conexaoAoBanCO)
-    # Importante: para cadastrar um veículo, precisamos saber quem são os clientes (donos)
-    operacao_c = clientesOperacao(conexaoAoBanCO)
-
-    while True:
-        limpar_tela()
-        try:
-            print("-" * 30)
-            print("  SUB-MENU: VEÍCULOS")
-            print("-" * 30)
-            print("[1] Inserir Veículo")
-            print("[2] Listar Todos")
-            print("[3] Alterar Cadastro")
-            print("[4] Deletar Registro")
-            print("[0] Voltar")
-
-            escolha = input("Escolha a Opção: ").strip()
-
-            match escolha:
-                case "1":
-                    print("--- Lista de Clientes (Donos) ---")
-                    operacao_c.listarClientes(None)  # Mostra os clientes para o usuário saber o ID_DONO
-
-                    novo_V = VEICULOS(
-                        None,
-                        input("Insira a MARCA: ").strip(),
-                        input("Insira o MODELO: ").strip(),
-                        int(input("Insira o ANO: ")),
-                        input("Insira a PLACA: ").strip(),
-                        int(input("Insira o ID do DONO (Cliente): "))
-                    )
-                    operacao_v.inserirVeiculo(novo_V)
-                    input("Aperte enter para continuar...")
-
-                case "2":
-                    print("=" * 45)
-                    print("Lista de Veículos Cadastrados")
-                    print("=" * 45)
-                    operacao_v.listarVeiculos(None)
-                    input("Aperte enter para continuar...")
-
-                case "3":
-                    id_v = int(input("Insira o ID do VEÍCULO que deseja alterar: "))
-                    mudar_v = VEICULOS(
-                        id_v,
-                        input("Nova MARCA: ").strip(),
-                        input("Novo MODELO: ").strip(),
-                        int(input("Novo ANO: ")),
-                        input("Nova PLACA: ").strip(),
-                        int(input("Novo ID do DONO: "))
-                    )
-                    print("!AVISO: Verifique os dados antes de confirmar")
-                    operacao_v.alterarVeiculo(mudar_v)
-                    input("Aperte enter para continuar...")
-
-                case "4":
-                    print("=" * 45)
-                    print("Deletar Veículo")
-                    print("=" * 45)
-                    id_v = int(input("Insira o ID do veículo para deletar: "))
-                    # VEICULOS precisa de 6 argumentos no __init__
-                    deletar_alvo = VEICULOS(id_v, None, None, None, None, None)
-                    operacao_v.deletarVeiculo(deletar_alvo)
-                    input("Aperte enter para continuar...")
-
-                case "0":
-                    print("Retornando ao Menu Principal...")
-                    break
-
-                case _:
-                    print("Opção inválida!")
-                    input("Aperte enter para continuar...")
-
-        except ValueError:
-            print("Erro: Você digitou letras onde era esperado um número (Ano ou ID).")
-            input("Aperte enter para voltar...")
-        except Exception as erro:
-            print(f"Erro na operação de Veículos: {erro}")
-            input("Aperte enter para voltar...")
-
-
-
-
-while True:
-    print("="*55)
-    print(f"{'Menu Principal':^55}")
-    print("="*55)
-    print("[1] SUB-S-Cadastrar Cliente")
-    print("[2] SUB-S_Cadastrar Veiculo")
-    print("[0] SAIR")
-    OP = input("Escolha a Opção:").strip().upper()
-    limpar_tela()
-    match OP:
-        case "1":
-            Cadastro_Clientes_Menu()
-        case "2":
-            Cadastro_Veiculos_Menu()
-        case "0":
-            if conexaoAoBanCO:
-                conexaoAoBanCO.close()
+        print("========================= Menu Clientes ===========================")
+        print("[1] Cadastrar | [2] Listar | [3] Alterar | [4] Deletar | [0] Sair")
+        print("===================================================================")
+        op = input("Escolha: ").strip()
+        match op:
+            case "1":
+                cadastra_Clientes(conexaoAoBanCO)
+            case "2":
+                Listar_Clientes(conexaoAoBanCO)
+            case "3":
+                alterar_Clientes(conexaoAoBanCO)
+            case"4":
+                deletar_Clientes(conexaoAoBanCO)
+            case"0":
                 break
-        case _:
-            print("Apenas opções listadas")
+
+
+def Cadastro_veiculos_Menu():
+    while True:
+        limpar_tela()
+        print("======================== Menu Veículos ===========================")
+        print("[1] Cadastrar | [2] Listar | [3] Alterar | [4] Deletar | [0] Sair")
+        print("===================================================================")
+        op = input("Escolha: ").strip()
+        match op:
+          case "1":
+            Cadastrar_Veiculos(conexaoAoBanCO)
+          case "2":
+            Listar_Veiculos(conexaoAoBanCO)
+          case "3":
+            Alterar_Modelos(conexaoAoBanCO)
+          case "4":
+            Deletar_Modelos(conexaoAoBanCO)
+          case "0":
+            break
+
+
+# EXECUÇÃO
+conexaoAoBanCO = iniciar_Banco_De_Dados()
+if conexaoAoBanCO:
+    while True:
+        limpar_tela()
+        print("=" * 35)
+        print(f"{'SISTEMA DE FINANCIAMENTO':^35}")
+        print("=" * 35)
+        print("1: Sub-Menu Clientes")
+        print("2: Sub-Menu Veiculos")
+        print("0: Sair")
+        OP = input("Escolha a Opção: ").strip()
+        if OP == "1":
+            Cadastro_clientes_Menu()
+        elif OP == "2":
+            Cadastro_veiculos_Menu()
+        elif OP == "0":
+            conexaoAoBanCO.close()
+            break
