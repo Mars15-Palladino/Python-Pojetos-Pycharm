@@ -1,4 +1,4 @@
-from unittest import result
+
 
 import pandas as pd
 from tabulate import tabulate  # Importa uma Vestimenta Bombada para as tabelas
