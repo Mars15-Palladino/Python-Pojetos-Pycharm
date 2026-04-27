@@ -1,6 +1,6 @@
 import os
 import sqlite3
-from unittest import case
+from datetime import date
 
 import pandas as pd
 from tabulate import tabulate
@@ -19,7 +19,7 @@ class CLIENTES:
 
 
 class VEICULOS:
-    def __init__(self, ID_V, MARCA, MODELO, ANO, PLACA, ID_DONO):
+    def __init__(self, ID_V, MARCA, MODELO, ANO, PLACA, ID_DONO = None):
         self.ID_V = ID_V
         self.MARCA = MARCA
         self.MODELO = MODELO
@@ -27,9 +27,17 @@ class VEICULOS:
         self.PLACA = PLACA
         self.ID_DONO = ID_DONO
 
+class FINANCIAMENTO:
+    def __init__(self,ID_F,ID_C,ID_V,DATA_COMPRA_INICIO,VALOR,QTD_PARCELAS,):
+        self.ID_F = ID_F
+        self.ID_C = ID_C
+        self.ID_V = ID_V
+        self.DATA_COMPRA_INICIO = DATA_COMPRA_INICIO
+        self.VALOR = VALOR
+        self.QTD_PARCELAS = QTD_PARCELAS
 
 # =================================================================
-# CLASSES DE OPERAÇÃO (REPOSITÓRIO)
+# CLASSES Das OPERAÇÕES (REPOSITÓRIO)
 # =================================================================
 class clientesOperacao:
     def __init__(self, ConexaoAoBanCO):
@@ -120,7 +128,161 @@ class veiculosOperacao:
             return True
         except sqlite3.Error as erro:
             print("⚠️ Erro no banco de dados.", erro)
+class FinanceiraOperacao:
+    def __init__(self, ConexaoAoBanCO):
+        self.connP = ConexaoAoBanCO# self organiza a conexão
 
+    def Financiamento_OP_Venda(self, Nova_Venda):
+
+            Nome_Cliente = Nova_Venda.ID_C
+            modelo_Veiculo = Nova_Venda.ID_V
+
+            cursorP = self.connP.cursor()
+            cursorP.execute("SELECT ID_C,NOME,CPF FROM CLIENTES WHERE NOME LIKE ?", (f"%{Nome_Cliente}%",))
+            resultado_Cliente = cursorP.fetchone()
+
+            if not resultado_Cliente:
+                print("Cliente Não encontrado no Sistema")
+                return
+            else:
+                print(f"Cliente encontrado,{resultado_Cliente[0]}")
+                print(f"Nome do Cliente,{resultado_Cliente[1]}")
+                print(f"CPF encontrado,{resultado_Cliente[2]}")
+                confirmarC = input("Cliente Correto... (S/N)").strip().upper()
+                if confirmarC == "S":
+                    print("Operação Concluída!")
+                else:
+                    print("Operacão Cancelada!")
+                input("Aperte ENTER para continuar...")
+
+            cursorP.execute("SELECT ID_V,MODELO,PLACA FROM VEICULOS WHERE MODELO LIKE ?", (f"%{modelo_Veiculo}%",))
+            resultado_Veiculo = cursorP.fetchone()
+
+            if not resultado_Veiculo:
+                print("Veículo Não encontrado")
+                return
+            else:
+                print(f"Veículo encontrado,{resultado_Veiculo[0]}")
+                print(f"Modelo,{resultado_Veiculo[1]}")
+                print(f"PLACA encontrado,{resultado_Veiculo[2]}")
+                confirmarV = input("Veiculo Correto.....(S/N)").strip().upper()
+                if confirmarV == "S":
+                    print("Operação Concluída!")
+                else:
+                    print("Operação Cancelada")
+                input("Aperte ENTER para continuar...")
+                # Aqui eu uso apenas o que vou usar para as chaves estrangeiras
+                ID_cliente_Final = resultado_Cliente[0]
+                CPF_cliente_Final = resultado_Cliente[2]
+                Nome_cliente_Final = resultado_Cliente[1]
+
+                ID_veiculo_Final = resultado_Veiculo[0]
+                Modelo_Veiculo_Final = resultado_Veiculo[1]
+                PLACA_Veiculo_Final = resultado_Veiculo[2]
+                print("=" * 45)
+                print(f"Prosseguindo para valores da Compra do Cliente:{CPF_cliente_Final} | {Nome_cliente_Final}")
+                print(f"Veículo escolhido: {Modelo_Veiculo_Final} de | (Placa:{PLACA_Veiculo_Final})")
+                print("=" * 45)
+                print(f"{'Operação Financeira':^24}")
+                print("=" * 45)
+                print("1.Pagamento a Vista")
+                print("2.Pagamento Parcelado")
+                escolha = input("Escolha a Forma de Pagamento")
+                Data_Venda = date.today().strftime("%d/%m/%Y")
+                ValorFinal = None
+                QTD_PARCELAS = None
+                ValorFinal_Banco = None
+                while True:
+                    try:
+                        match escolha:
+                            case "1":
+                                print("Pagamento a Vista")
+                                ValorVeiculo = input("Informe o Valor do Veículo: ").strip().replace(",", ".")
+                                Valor_Veiculo_Total = float(
+                                    ValorVeiculo)  # Em Python, raise significa "lançar" ou "disparar".
+                                if Valor_Veiculo_Total <= 0: raise ValueError
+                                # quando você escreve isso, você está forçando o programa a gerar um erro propositalmente.
+                                # A Lógica: Um carro não pode custar $R$ 0,00$ nem um valor negativo (como $-R$ 5.000,00$).
+                                # O Problema: O Python aceita o número -5000 em uma variável do tipo float sem reclamar.
+                                # A Solução: Você cria uma regra personalizada. Se o valor for menor ou igual a zero, você "lança" o erro ValueError.
+                                print("Desconto de 20%, Aplicacdo para pagamento a Vista")
+                                ValorFinal = Valor_Veiculo_Total - (Valor_Veiculo_Total * 0.20)
+                                print(f"Compra Aprovada: Valor Final = R$ {ValorFinal:,.2f}")
+                                QTD_PARCELAS = 1
+                                ValorFinal_Banco = ValorFinal
+                                break
+                            case "2":
+                                print("Pagamento Parcelado")
+                                ValorVeiculo = input("Informe o Valor do Veículo: ").strip().replace(",", ".")
+                                Valor_Veiculo_Total = float(ValorVeiculo)
+                                if Valor_Veiculo_Total <= 0: raise ValueError
+                                while True:
+                                    try:
+                                        QTD_PARCELAS = int(input("Informe em quantas vezes: "))
+                                        # if not QTD_PARCELAS.isdigit(): Não funciona para inteiros, apenas para strings, texto
+                                        # return
+                                        if QTD_PARCELAS <= 0: raise ValueError
+                                        break
+                                    except ValueError as e:
+                                        print("Insira um Valor Váilido")
+
+                                print("Sem desconto Aplicado. Ocorrência de juros de no Máximo até 10,0% de")
+                                Taxa_Informada = input("Informe a Taxa dos Juros entre 1,1 a 10,0").strip().replace(",",
+                                                                                                                    ".")  # .05 # 5% ao mês
+                                Taxa_Juros = float(Taxa_Informada) / 100
+                                print("=" * 45)
+                                ValorFinal = Valor_Veiculo_Total
+                                # Valor_Parcela = Valor_Veiculo_Total/QTD_PARCELAS #Mudança para incluir cálculo de juros abaixo
+                                ValorFinal_Juros = Valor_Veiculo_Total * (1 + (Taxa_Juros * QTD_PARCELAS))
+                                ValorParcela = ValorFinal_Juros / QTD_PARCELAS
+                                print("=" * 45)
+                                print("Informações Da Compra")
+                                print('-' * 45)
+                                print(f"Taxa de Juros: {Taxa_Juros * 100}% ao Mês")
+                                print(f"Compra Aprovada: {ValorFinal_Juros:,.2f}")
+                                print(f"Parcelamento Aprovado em {QTD_PARCELAS} vezes de R$ {ValorParcela:,.2f} Reais ")
+                                print("=" * 45)
+                                print(f"Total dos juros: R$ {ValorFinal_Juros - Valor_Veiculo_Total:,.2f}")
+                                confirmar = input("Deseja continuar?(S/N)").strip().upper()
+                                if confirmar == "S":
+                                    print("Operação Concluída")
+                                    ValorFinal_Banco = ValorFinal_Juros
+                                    break
+                                else:
+                                    print("Operação Cancelada")
+                                    return
+
+                    except ValueError as e:
+                        print("Valor invalido: O valor do Veículo e das Parcelas deve ser maior que zero", e)
+                        continue
+
+            if ValorFinal is not None:
+                try:
+                    sql = "INSERT INTO FINANCIAMENTO(ID_C,ID_V,DATA_COMPRA_INICIO,VALOR,QTD_PARCELAS) VALUES (?,?,?,?,?)"
+                    cursorP.execute(sql,
+                                    (ID_cliente_Final, ID_veiculo_Final, Data_Venda, ValorFinal_Banco, QTD_PARCELAS))
+                    self.connP.commit()
+                    print("Registro da operação salvo com sucesso!")
+                except sqlite3.Error as e:
+                    print("Erro no Banco de dados", e)
+    def Relatorio_Vendas(self):
+        limpar_tela()
+        print("=" * 45)
+        print("Relatório de Vendas E FIANCIAMENTO")
+        print("=" * 45)
+        Relatorio_Vendas = pd.read_sql_query("SELECT "
+                                      "F.ID_F AS 'ID_F'," # USO DE APELIDOS LIBERADOS INIAL DAS CLASSES PRINCIPAIS
+                                      "C.NOME AS 'CLIENTE', "
+                                      "V.MODELO AS 'VEICULO', "
+                                      "F.DATA_COMPRA_INICIO AS 'Data da Compra', "
+                                      "F.VALOR AS 'Valor', "
+                                      "F.QTD_PARCELAS AS 'Parcelas'  "
+                                      "FROM FINANCIAMENTO F "
+                                      "JOIN CLIENTES C ON F.ID_C = C.ID_C "
+                                      "JOIN VEICULOS V ON F.ID_V = V.ID_V ", self.connP)
+        return Relatorio_Vendas
+
+        #Usando o Join, ele mostra o nome que estão nas outras tabelas no lugar dos números
 
 # =================================================================
 # FUNÇÕES DE INTERAÇÃO (MENUS)
@@ -227,11 +389,8 @@ def Cadastrar_Veiculos(conn):
         ano = input("Ano: ").strip()
         if ano.isdigit(): break
     placa = input("Placa: ").strip()
-    while True:
-        id_dono = input("ID do Comprador: ").strip()
-        if id_dono.isdigit(): break
 
-    novo_carro = VEICULOS(None, marca, modelo, int(ano), placa, int(id_dono))
+    novo_carro = VEICULOS(None, marca, modelo, int(ano), placa, None)# lembrar de passar como pacote, mas também posso passar as variáveis direto
     estoque = veiculosOperacao(conn)
     estoque.inserirVeiculo(novo_carro)
     input("Aperte ENTER para continuar...")
@@ -304,9 +463,39 @@ def Deletar_Modelos(conn):
     except Exception as e:
         print("Ocorreu um erro",e)
         input("Aperte ENTER para continuar...")
+# ================================================================
+#                  Operação Financiamento menus
+#=================================================================
+def Iniciar_Venda_Operacao(conn):
+    limpar_tela()
+    print("=" * 45)
+    print("Financiamento de Compra")
+    print("=" * 45)
+    Nome_Cliente_Envio = input("Informe o nome do cliente: ").strip()
+    modelo_Veiculo_Envio = input("Informe o modelo do Veículo: ").strip()
+
+    Nova_Venda = FINANCIAMENTO(None,Nome_Cliente_Envio, modelo_Veiculo_Envio,None,None,None)
+    operador = FinanceiraOperacao(conn)
+    operador.Financiamento_OP_Venda(Nova_Venda)
+    input("Aperte ENTER para continuar...")
+def Listar_Vendas(conn):
+    try:
+
+        relatorio = FinanceiraOperacao(conn)# aqui eu criei meu próprio método, é ele que devo chamar a baixo
+        df = relatorio.Relatorio_Vendas()
+        if df is None or df.empty:
+            print("Nenhum relatorio encontrado")
+        else:
+            print("Relatorio financiamento de Compra")
+            print("=" * 45)
+            print(tabulate(df, headers="keys", tablefmt="psql", showindex=False))
+            print("="*45)
+            input("Aperte ENTER para continuar...")
+    except sqlite3.Error as e:
+                print("Ocorreu um erro no Banco de Dados",e)
 
 # =================================================================
-# SISTEMA PRINCIPAL
+#                      SISTEMA PRINCIPAL
 # =================================================================
 
 def limpar_tela():
@@ -316,7 +505,7 @@ def limpar_tela():
 def iniciar_Banco_De_Dados():
     try:
         connP = sqlite3.connect('banco_de_dados_Financiamento.db')
-        connP.execute("PRAGMA foreign_keys = OFF")
+        connP.execute("PRAGMA foreign_keys = ON")
         cursorP = connP.cursor()
         cursorP.execute('''CREATE TABLE IF NOT EXISTS CLIENTES
         (
@@ -360,7 +549,7 @@ def iniciar_Banco_De_Dados():
                                10
                            ) NOT NULL,
             ANO INTEGER NOT NULL,
-            ID_DONO INTEGER NOT NULL,
+            ID_DONO INTEGER,
             FOREIGN KEY
                            (
                                ID_DONO
@@ -368,6 +557,15 @@ def iniciar_Banco_De_Dados():
                            (
                                ID_C
                            ))''')
+        cursorP.execute('''CREATE TABLE IF NOT EXISTS FINANCIAMENTO(
+                        ID_F INTEGER PRIMARY KEY AUTOINCREMENT,
+                        ID_C INTEGER NOT NULL,
+                        ID_V INTEGER NOT NULL, 
+                        DATA_COMPRA_INICIO VARCHAR(15) NOT NULL,
+                        VALOR DECIMAL(10,2) NOT NULL, --10 digitos no total, 2 Após Vírgula-- 
+                        QTD_PARCELAS INTEGER NOT NULL,
+                        FOREIGN KEY (ID_C) REFERENCES CLIENTES
+                        FOREIGN KEY (ID_V) REFERENCES VEICULOS) ''')
         connP.commit()
         return connP
     except sqlite3.Error as erro:
@@ -393,6 +591,9 @@ def Cadastro_clientes_Menu():
                 deletar_Clientes(conexaoAoBanCO)
             case"0":
                 break
+            case _:
+                print("Apenas Opções Listadas")
+                input("Pressione ENTER para sair")
 
 
 def Cadastro_veiculos_Menu():
@@ -413,9 +614,28 @@ def Cadastro_veiculos_Menu():
             Deletar_Modelos(conexaoAoBanCO)
           case "0":
             break
+          case _:
+              print("Apenas opções Listadas")
+              input("Pressione ENTER para sair")
+def Compra_Financiamento_Menu():
+    while True:
+        limpar_tela()
+        print("=========================Menu Compra e Vendas============================")
+        print("               [1] Compra | [2] relatório de Compras | [0] Sair"          )
+        print("========================================================================")
+        op = input("Escolha: ").strip()
+        match op:
+            case "1":
+                Iniciar_Venda_Operacao(conexaoAoBanCO)
+            case "2":
+                Listar_Vendas(conexaoAoBanCO)
+            case "0":
+                break
+            case _:
+                print("Apenas opões Listadas")
+                input("Pressione ENTER para Retornar ao menu")
 
 
-# EXECUÇÃO
 conexaoAoBanCO = iniciar_Banco_De_Dados()
 if conexaoAoBanCO:
     while True:
@@ -425,12 +645,15 @@ if conexaoAoBanCO:
         print("=" * 35)
         print("1: Sub-Menu Clientes")
         print("2: Sub-Menu Veiculos")
+        print("3: Compra")
         print("0: Sair")
         OP = input("Escolha a Opção: ").strip()
         if OP == "1":
             Cadastro_clientes_Menu()
         elif OP == "2":
             Cadastro_veiculos_Menu()
+        elif OP == "3":
+            Compra_Financiamento_Menu()
         elif OP == "0":
             conexaoAoBanCO.close()
             break
